@@ -21,10 +21,11 @@ unsigned int sendMessageToGroup (message *msg);
 unsigned int sendMessageToPerson (message *msg);
 
 void setupDatabase () {
-    for (int i = 0; i < MAX_USER; i++) {
+    int i;
+    for (i = 0; i < MAX_USER; i++) {
         users[i] = NULL;
     }
-    for (int i = 0; i < MAX_GROUPS; i++) {
+    for (i = 0; i < MAX_GROUPS; i++) {
         groups[i] = NULL;
     }
 }
@@ -41,6 +42,7 @@ int hash (char *string) {
 
 person *getPersonByName (char *name){
     
+    int i;
     int pos = 0;
     
     while (users[pos] != NULL && strcmp(name, users[pos]->name)) {
@@ -50,7 +52,7 @@ person *getPersonByName (char *name){
     if (users[pos] == NULL) {
         users[pos] = malloc(sizeof(person));
         strcpy(users[pos]->name, name);
-        for (int i = 0; i < MAX_MESSAGE_QUEUE; i++) {
+        for (i = 0; i < MAX_MESSAGE_QUEUE; i++) {
             users[pos]->queue[i] = NULL;
         }
     }
@@ -65,6 +67,7 @@ person **getAllUsers (int *size) {
 
 Group *getGroupByName (char *name){
     
+    int i;
     int pos = 0;
     
     while (groups[pos] != NULL && strcmp(name, groups[pos]->name)) {
@@ -74,7 +77,7 @@ Group *getGroupByName (char *name){
     if (groups[pos] == NULL) {
         groups[pos] = malloc(sizeof(Group));
         strcpy(groups[pos]->name, name);
-        for (int i = 0; i < MAX_PERSON_PER_GROUP; i++) {
+        for (i = 0; i < MAX_PERSON_PER_GROUP; i++) {
             groups[pos]->members[i] = NULL;
         }
     }
@@ -93,8 +96,8 @@ unsigned int sendMessage (message *msg) {
 
 unsigned int sendMessageToGroup (message *msg) {
     Group *group = (Group*)msg->group;
-    int id = 0;
-    for (int i = 0; i < MAX_PERSON_PER_GROUP; i++) {
+    int i, id = 0;
+    for (i = 0; i < MAX_PERSON_PER_GROUP; i++) {
         if (group->members[i] != NULL) {
             message *copyMessage = malloc(sizeof(message));
             copyMessage = msg;
@@ -106,8 +109,9 @@ unsigned int sendMessageToGroup (message *msg) {
 }
 
 unsigned int sendMessageToPerson (message *msg) {
+    int i;
     person *receiver = msg->receiver;
-    for (int i = 0; i < MAX_MESSAGE_QUEUE ; i++) {
+    for (i = 0; i < MAX_MESSAGE_QUEUE ; i++) {
         if (receiver->queue[i] == NULL) {
             receiver->queue[i] = (struct message *)msg;
             return (unsigned int)hash(msg->text);

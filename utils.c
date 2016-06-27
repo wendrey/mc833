@@ -6,17 +6,17 @@
 //  Copyright © 2016 grupomodafoca. All rights reserved.
 //
 
-#include "Utils.h"
+#include "utils.h"
 #include <stdlib.h>
 #include <string.h>
 
 char* getNWord (char *string, int n) {
     int countWords = 0;
     int boolean = 0;
-    
+    int i;   
     int start, end;
     
-    for (int i = 0; ; i++) {
+    for (i = 0; ; i++) {
         if (string[i] != ' ' && string[i] != '\0' && string[i] != '\n') {
             if (boolean == 0) {
                 countWords++;
@@ -38,7 +38,7 @@ char* getNWord (char *string, int n) {
     }
     
     char *word = malloc((end - start + 2)*sizeof(char));
-    for (int i = 0; i <= end-start + 1; i++) {
+    for (i = 0; i <= end-start + 1; i++) {
         word[i] = string[start + i];
     }
     word[end-start+1] = '\0';
@@ -50,8 +50,8 @@ void upperCaseString (char*string) {
     
     int i = 0;
     while (string[i] != '\0') {
-        if (string[i] > 'a' && string[i] < 'z')
-            string += 'A' - 'a';
+        if (string[i] >= 'a' && string[i] <= 'z')
+            string[i] += 'A' - 'a';
         i++;
     }
     
