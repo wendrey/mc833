@@ -161,7 +161,9 @@ command *readCommand(session *currentSession) {
     } else if (strcmp(commandWord, "SEND") ==   0) {
         currentCommand->type = sendUserMessage;
         currentCommand->receiver = getNWord(buffer, 2);
-        currentCommand->data = getNWord(buffer, 3);
+        currentCommand->data = getNWord(buffer, 0);
+        if (strcmp(currentCommand->data, "\0") == 0)
+	    currentCommand->type = invalid;
     } else if (strcmp(commandWord, "CREATEG") == 0) {
         currentCommand->type = createGroup;
     } else if (strcmp(commandWord, "JOING") == 0) {
@@ -266,9 +268,9 @@ void updateMessages (session *clientSession) {
         message *msg = (message*)clientSession->person->queue[i];
         if (msg != NULL) {
             if (msg->group == NULL) {
-                sprintf(buffer, "MESSAGE %s %s", msg->sender->name, msg->text);
+                sprintf(buffer, "MESSAGE %s \"%s\"", msg->sender->name, msg->text);
             } else {
-                sprintf(buffer, "GROUPMESSAGE %s %s %s", ((Group*)msg->group)->name, msg->sender->name, msg->text);
+                sprintf(buffer, "GROUPMESSAGE %s %s \"%s\"", ((Group*)msg->group)->name, msg->sender->name, msg->text);
             }
             send(clientSession->socket_id, buffer, strlen(buffer), 0);
         }

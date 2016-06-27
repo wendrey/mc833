@@ -10,6 +10,7 @@
 #include <termios.h>
 #include <ncurses.h>
 #include <string.h>
+#include "utils.h"
 
 #define MAX_LINE 256
 
@@ -99,12 +100,13 @@ void *SendMessage () {
 
 	pthread_mutex_lock(&display_mutex);
 	mvwprintw(input, 0, 0, "%s\n", divisory);
+	mvwprintw(input, 0, 0, "$[%s]", name);
 	wrefresh(display);
 	wrefresh(input);
 	pthread_mutex_unlock(&display_mutex);
 
 	memset(str, '\0', MAX_LINE);
-	strcat(str, "LOGIN ");
+	strcat(str, "LOGIN \0");
 	strcat(str, name);
 	str[MAX_LINE] = '\0';
 	send(s, str, strlen(str)+1, 0);
@@ -116,9 +118,10 @@ void *SendMessage () {
 		if (str[0] == '\0')
 			continue;
 		pthread_mutex_lock(&display_mutex);
-		mvwprintw(display, k++, 0, "%s", str);
+		mvwprintw(display, k++, 0, "$[%s] %s", name, str);
 		wclear(input);
 		mvwprintw(input, 0, 0, "%s", divisory);
+		mvwprintw(input, 0, 0, "$[%s]", name);
 		wrefresh(display);	
 		wrefresh(input);
 		pthread_mutex_unlock(&display_mutex);
@@ -131,22 +134,26 @@ void *RecvMessage () {
 
 	int i;
 	char str[MAX_LINE];
+	char buf[MAX_LINE];
+	char *aux;
 	char divisory[COLS];
 	
 	for (i = 0; i < COLS; i++)
         divisory[i] = '-';
 
-	pthread_mutex_lock(&display_mutex);
-	mvwprintw(input, 0, 0, "%s\n", divisory);
-	wrefresh(display);
-	wrefresh(input);
-	pthread_mutex_unlock(&display_mutex);
-
 	while(1) {
         	memset(str,'\0', MAX_LINE);
+		memset(buf,'\0', MAX_LINE);
 		recv(s, str, MAX_LINE, 0);
+		aux = getNWord(str,1);
+		if (strcmp(aux,"MESSAGE") == 0) {
+			strcat(buf,"[");
+			strcat(buf, getNWord(str,2));
+			strcat(buf, ">] ");
+			strcat(buf, getNWord(str,0));
+		}
 		pthread_mutex_lock(&display_mutex);
-		mvwprintw(display, k++, 0, "%s", str);
+		mvwprintw(display, k++, 0, "%s", buf);
 		wrefresh(display);
 		pthread_mutex_unlock(&display_mutex);
 	}
