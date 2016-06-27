@@ -12,8 +12,22 @@
 
 #define USER_HASH_TABLE_SIZE 10000
 #define MAX_USER 100
+#define MAX_GROUPS 20
 
 person *users[MAX_USER];
+Group *groups[MAX_GROUPS];
+
+unsigned int sendMessageToGroup (message *msg);
+unsigned int sendMessageToPerson (message *msg);
+
+void setupDatabase () {
+    for (int i = 0; i < MAX_USER; i++) {
+        users[i] = NULL;
+    }
+    for (int i = 0; i < MAX_GROUPS; i++) {
+        groups[i] = NULL;
+    }
+}
 
 int hash (char *string) {
     int hash = 5381;
@@ -29,11 +43,11 @@ person *getPersonByName (char *name){
     
     int pos = 0;
     
-    while (pos < MAX_USER && users[pos] != NULL && strcmp(name, users[pos]->name)) {
+    while (users[pos] != NULL && strcmp(name, users[pos]->name)) {
         pos++;
     }
     
-    if (pos < MAX_USER && users[pos] == NULL) {
+    if (users[pos] == NULL) {
         users[pos] = malloc(sizeof(person));
         strcpy(users[pos]->name, name);
         for (int i = 0; i < MAX_MESSAGE_QUEUE; i++) {
@@ -49,7 +63,49 @@ person **getAllUsers (int *size) {
     return users;
 }
 
+Group *getGroupByName (char *name){
+    
+    int pos = 0;
+    
+    while (groups[pos] != NULL && strcmp(name, groups[pos]->name)) {
+        pos++;
+    }
+    
+    if (groups[pos] == NULL) {
+        groups[pos] = malloc(sizeof(Group));
+        strcpy(groups[pos]->name, name);
+        for (int i = 0; i < MAX_PERSON_PER_GROUP; i++) {
+            groups[pos]->members[i] = NULL;
+        }
+    }
+    
+    return groups[pos];
+};
+
 unsigned int sendMessage (message *msg) {
+    
+    if (msg->group == NULL) {
+        return sendMessageToPerson(msg);
+    } else {
+        return sendMessageToGroup(msg);
+    }
+}
+
+unsigned int sendMessageToGroup (message *msg) {
+    Group *group = (Group*)msg->group;
+    int id = 0;
+    for (int i = 0; i < MAX_PERSON_PER_GROUP; i++) {
+        if (group->members[i] != NULL) {
+            message *copyMessage = malloc(sizeof(message));
+            copyMessage = msg;
+            id = sendMessageToPerson(copyMessage) > id ? : id;
+        }
+    }
+    free(msg);
+    return id;
+}
+
+unsigned int sendMessageToPerson (message *msg) {
     person *receiver = msg->receiver;
     for (int i = 0; i < MAX_MESSAGE_QUEUE ; i++) {
         if (receiver->queue[i] == NULL) {
@@ -59,3 +115,4 @@ unsigned int sendMessage (message *msg) {
     }
     return 0;
 }
+

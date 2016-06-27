@@ -13,10 +13,10 @@
 char* getNWord (char *string, int n) {
     int countWords = 0;
     int boolean = 0;
-    int start, end;
-    int i;
     
-    for (i = 0; ; i++) {
+    int start, end;
+    
+    for (int i = 0; ; i++) {
         if (string[i] != ' ' && string[i] != '\0' && string[i] != '\n') {
             if (boolean == 0) {
                 countWords++;
@@ -44,4 +44,15 @@ char* getNWord (char *string, int n) {
     word[end-start+1] = '\0';
     
     return word;
+}
+
+void upperCaseString (char*string) {
+    
+    int i = 0;
+    while (string[i] != '\0') {
+        if (string[i] > 'a' && string[i] < 'z')
+            string += 'A' - 'a';
+        i++;
+    }
+    
 }
