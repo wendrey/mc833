@@ -14,7 +14,7 @@
 #define MAX_LINE 256
 
 int online = 0;
-int k = 0;
+volatile int k = 0;
 int s;
 char* name;
 pthread_mutex_t display_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -103,8 +103,14 @@ void *SendMessage () {
 	wrefresh(input);
 	pthread_mutex_unlock(&display_mutex);
 
+	memset(str, '\0', MAX_LINE);
+	strcat(str, "LOGIN ");
+	strcat(str, name);
+	str[MAX_LINE] = '\0';
+	send(s, str, strlen(str)+1, 0);
+
 	while (1) {
-        memset(str,'\0',MAX_LINE);
+        	memset(str,'\0', MAX_LINE);
 		mvwgetstr(input, 1, 0, str);	
 		str[MAX_LINE-1] = '\0';
 		if (str[0] == '\0')
@@ -137,7 +143,7 @@ void *RecvMessage () {
 	pthread_mutex_unlock(&display_mutex);
 
 	while(1) {
-        	memset(str,'\0',MAX_LINE);
+        	memset(str,'\0', MAX_LINE);
 		recv(s, str, MAX_LINE, 0);
 		pthread_mutex_lock(&display_mutex);
 		mvwprintw(display, k++, 0, "%s", str);
