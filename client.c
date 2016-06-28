@@ -142,7 +142,7 @@ void *SendMessage () {
 			id = hash(str);
 			strcat(buf,"SEND ");
 			snprintf(idstr, 10, "%d", id);
-			strcat(buf,aux);
+			strcat(buf,idstr);
 			strcat(buf,str+4);
 		}
 

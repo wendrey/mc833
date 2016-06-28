@@ -149,7 +149,7 @@ command *readCommand(session *currentSession) {
         return NULL;
     }
 
-	printf("%s\n", buffer);
+	printf("recebido: |%s|\n", buffer);
 
     upperCaseString(commandWord);    
     command *currentCommand = calloc(1, sizeof(command));
@@ -207,7 +207,6 @@ void executeCommand (command *currentCommand, session *currentSession) {
             msg->sender = currentSession->person;
             msg->receiver = getPersonByName(currentCommand->receiver);
             msg->text = (char*)currentCommand->data;
-            printf("-enviando:|%s|-\n", msg->text);
 	    sprintf(buffer, "%u", sendMessage(msg));
             break;
         case createGroup:
