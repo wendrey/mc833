@@ -138,12 +138,9 @@ void *SendMessage () {
 
 		if (strcmp(aux,"SEND") == 0) {
 			fdbk = 1;
-			aux = getNWord(str, 0);
 			id = hash(str);
-			strcat(buf,"SEND ");
 			snprintf(idstr, 10, "%d", id);
-			strcat(buf,idstr);
-			strcat(buf,str+4);
+			snprintf(buf, MAX_LINE, "SEND %d %s", id, str+4);
 		}
 
 		pthread_mutex_lock(&display_mutex);
@@ -186,10 +183,15 @@ void *RecvMessage () {
 		recv(s, str, MAX_LINE, 0);
 		aux = getNWord(str,1);
 		if (strcmp(aux,"NEW_MESSAGE") == 0) {
-			strcat(buf,"[");
-			strcat(buf, getNWord(str,2));
-			strcat(buf, ">] ");
-			strcat(buf, getNWord(str,0));
+			snprintf(buf, MAX_LINE, "[%s>] %s", getNWord(str,3), getNWord(str,0));
+			snprintf(str, MAX_LINE, "RECV %s", getNWord(str,2));
+			send(s, str, strlen(str)+1, 0);
+		}
+		else if (strcmp(aux,"SENT_MESSAGE") == 0) {
+			snprintf(buf, MAX_LINE, "Mensagem #%d enfileirada!\n", atoi(getNWord(str,2)));
+		}
+		else if (strcmp(aux,"RECV_MESSAGE") == 0) {
+			snprintf(buf, MAX_LINE, "Mensagem #%d recebida!\n", atoi(getNWord(str,2)));
 		}
 		else if (strcmp(aux,"WHO") == 0) {
 			

@@ -1,8 +1,6 @@
 ### MC833
 Projeto de Redes
 
-- Cliente imprime id da mensagem enfileirada e recebida
-- Cliente indica pro server que recebeu a mensagem
 - Cliente faz parse do comando WHO
 - Cliente imprime que entrou ou criou grupo
 
