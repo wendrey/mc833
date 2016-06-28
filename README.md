@@ -1,6 +1,10 @@
 ### MC833
 Projeto de Redes
 
+- Cliente imprime mensagem enviada, enfileirada e recebida
+- Cliente faz parse do comando WHO
+- Cliente imprime que entrou ou criou grupo
+
 Checklist:
 
 - Iniciar server []

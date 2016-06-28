@@ -158,9 +158,9 @@ command *readCommand(session *currentSession) {
         char *name = getNWord(buffer, 2);
         currentCommand->type = loginUser;
         currentCommand->data = name;
-    } else if (strcmp(commandWord, "SEND") ==   0) {
+    } else if (strcmp(commandWord, "SEND") == 0) {
         currentCommand->type = sendUserMessage;
-        currentCommand->receiver = getNWord(buffer, 2);
+        currentCommand->receiver = getNWord(buffer, 3);
         currentCommand->data = getNWord(buffer, 0);
         if (strcmp(currentCommand->data, "\0") == 0)
 	    currentCommand->type = invalid;
@@ -268,7 +268,7 @@ void updateMessages (session *clientSession) {
         message *msg = (message*)clientSession->person->queue[i];
         if (msg != NULL) {
             if (msg->group == NULL) {
-                sprintf(buffer, "MESSAGE %s \"%s\"", msg->sender->name, msg->text);
+                sprintf(buffer, "NEW_MESSAGE %s \"%s\"", msg->sender->name, msg->text);
             } else {
                 sprintf(buffer, "GROUPMESSAGE %s %s \"%s\"", ((Group*)msg->group)->name, msg->sender->name, msg->text);
             }

@@ -5,12 +5,14 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <time.h>
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <termios.h>
 #include <ncurses.h>
 #include <string.h>
 #include "utils.h"
+#include "database.h"
 
 #define MAX_LINE 256
 
@@ -91,10 +93,15 @@ int main(int argc, char * argv[]) {
 
 void *SendMessage () {
 
-	int i = 0;
+	int i = 0, id, ok, fdbk;
+	char buf[MAX_LINE];
 	char str[MAX_LINE];
+	char *aux;
+	char idstr[10];
 	char divisory[COLS];
 	
+	// imprime layout da tela do usuario
+
 	for (i = 0; i < COLS; i++)
         divisory[i] = '-';
 
@@ -105,6 +112,8 @@ void *SendMessage () {
 	wrefresh(input);
 	pthread_mutex_unlock(&display_mutex);
 
+	// envia notificacao de login para o server	
+
 	memset(str, '\0', MAX_LINE);
 	strcat(str, "LOGIN \0");
 	strcat(str, name);
@@ -112,20 +121,50 @@ void *SendMessage () {
 	send(s, str, strlen(str)+1, 0);
 
 	while (1) {
+
+		// recebe e trata entrada do usuario
+		// manda mensagem para o servidor
+		// imprime feedback para o usuario		
+
         	memset(str,'\0', MAX_LINE);
+		memset(buf,'\0', MAX_LINE);
 		mvwgetstr(input, 1, 0, str);	
 		str[MAX_LINE-1] = '\0';
+		
 		if (str[0] == '\0')
 			continue;
+
+		aux = getNWord(str, 1);
+
+		if (strcmp(aux,"SEND") == 0) {
+			fdbk = 1;
+			aux = getNWord(str, 0);
+			id = hash(str);
+			strcat(buf,"SEND ");
+			snprintf(idstr, 10, "%d", id);
+			strcat(buf,aux);
+			strcat(buf,str+4);
+		}
+
 		pthread_mutex_lock(&display_mutex);
 		mvwprintw(display, k++, 0, "$[%s] %s", name, str);
+		wrefresh(display);	
+		pthread_mutex_unlock(&display_mutex);
 		wclear(input);
 		mvwprintw(input, 0, 0, "%s", divisory);
 		mvwprintw(input, 0, 0, "$[%s]", name);
-		wrefresh(display);	
 		wrefresh(input);
-		pthread_mutex_unlock(&display_mutex);
-		send(s, str, strlen(str)+1, 0);
+
+		ok = send(s, buf, strlen(buf)+1, 0);
+		
+		if (fdbk && ok > 0) {
+			fdbk = 0;
+			pthread_mutex_lock(&display_mutex);
+			mvwprintw(display, k++, 0, "Mensagem #%s enviada!\n", idstr);
+			wrefresh(display);
+			pthread_mutex_unlock(&display_mutex);
+		}
+		
 	}
 	
 }
@@ -146,11 +185,14 @@ void *RecvMessage () {
 		memset(buf,'\0', MAX_LINE);
 		recv(s, str, MAX_LINE, 0);
 		aux = getNWord(str,1);
-		if (strcmp(aux,"MESSAGE") == 0) {
+		if (strcmp(aux,"NEW_MESSAGE") == 0) {
 			strcat(buf,"[");
 			strcat(buf, getNWord(str,2));
 			strcat(buf, ">] ");
 			strcat(buf, getNWord(str,0));
+		}
+		else if (strcmp(aux,"WHO") == 0) {
+			
 		}
 		pthread_mutex_lock(&display_mutex);
 		mvwprintw(display, k++, 0, "%s", buf);

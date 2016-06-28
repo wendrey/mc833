@@ -23,6 +23,7 @@ typedef struct {
 
 typedef struct {
     char *text;
+    int id;
     person *sender;
     person *receiver;
     struct Group *group;

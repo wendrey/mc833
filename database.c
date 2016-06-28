@@ -30,14 +30,14 @@ void setupDatabase () {
     }
 }
 
-int hash (char *string) {
+unsigned int hash (char *string) {
     int hash = 5381;
     int c;
     
     while ((c = *string++))
         hash = ((hash << 5) + hash) + c;
     
-    return hash % USER_HASH_TABLE_SIZE;
+    return (unsigned int) hash % USER_HASH_TABLE_SIZE;
 }
 
 person *getPersonByName (char *name){
