@@ -1,3 +1,10 @@
+//
+//  database.h
+//  ChatServer
+//
+//  Created by Lucas Calzolari on 6/23/16.
+//  Copyright © 2016 grupomodafoca. All rights reserved.
+//
 
 #include <stdio.h>
 #include "string.h"
