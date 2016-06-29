@@ -18,19 +18,8 @@ typedef struct {
     person *person;
 } session;
 
-typedef enum {
-    loginUser = 0, sendUserMessage, createGroup, joinGroup,
-    sendGroupMesage, checkUsers, sendFile, game, logoff, invalid
-} commandType;
-
-typedef struct {
-    commandType type;
-    char *receiver;
-    void *data;
-} command;
-
 char* SetWhoMessage();
 void readCommand(session *currentSession);
-void executeCommand (command *currentCommand, session *currentSession);
 void updateMessages (session *clientSession);
+int GetMessageType (char *string);
 

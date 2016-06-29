@@ -147,13 +147,23 @@ void readCommand(session *currentSession) {
 		sendMessage(msg);
 	
     } else if (type == newgrp_msg) {
-
+        
 //	} else if (type == recvgrp_msg) {
 
     } else if (type == join_msg) {
 
-    } else if (type == create_msg) {
+    } else if (type == create_group) {
+        char * groupName = getNWord(str, 2);
+        Group *group = getGroupByName(groupName);
+        msg = calloc(1, sizeof(message));
+        msg->type = create_group;
+        msg->text = groupName;
+        msg->group = group;
+        msg->receiver = currentSession->person;
 
+        addUserToGroup(group, currentSession->person);
+        sendMessage(msg);
+        
     } else if (type == game_msg) {
 
     } else if (type == play_msg) {
@@ -227,71 +237,6 @@ char* SetWhoMessage () {
 
 }
 
-void executeCommand (command *currentCommand, session *currentSession) {
-
-    int i;
-    int numberOfUsers;
-    person **allUsers;
-    char buffer[MAX_LINE];
-    memset (buffer, '\0', MAX_LINE);
-    
-    switch (currentCommand->type) {
-        case loginUser:
-            /*currentSession->person = getPersonByName((char*)(currentCommand->data));
-            currentSession->person->online = 1;
-            printf("User %s joined the chat.\n", currentSession->person->name);
-            */break;
-        case sendUserMessage:
-            /*msg = calloc(1, sizeof(message));
-            msg->sender = currentSession->person;
-            msg->receiver = getPersonByName(currentCommand->receiver);
-            msg->text = (char*)currentCommand->data;
-		    sprintf(buffer, "%u", sendMessage(msg));
-            */break;
-        case createGroup:
-            break;
-        case joinGroup:
-            break;
-        case sendGroupMesage:
-            break;
-        case checkUsers:
-            /*allUsers = getAllUsers(&numberOfUsers);
-            for (i = 0; i < numberOfUsers; i++) {
-                if (allUsers[i] != NULL && allUsers[i]->online) {
-                    strcat(buffer, allUsers[i]->name);
-                    strcat(buffer, " ");
-                }
-            }
-            strcat(buffer, "| ");
-            for (i = 0; i < numberOfUsers; i++) {
-                if (allUsers[i] != NULL && allUsers[i]->online == 0) {
-                    strcat(buffer, allUsers[i]->name);
-                    strcat(buffer, " ");
-                }
-            }
-    	    send(currentSession->socket_id, buffer, strlen(buffer)+1, 0);	
-            */break;
-        case logoff:
-            /*close(currentSession->socket_id);
-            currentSession->socket_id = -1;
-            currentSession->person->online = 0;
-            printf("User %s left the chat.\n", currentSession->person->name);
-            */break;
-        case game:
-            break;
-        case sendFile:
-            break;
-        case invalid:
-            /*sprintf (buffer, "That's an invalid command, sorry!\n");
-    		send(currentSession->socket_id, buffer, strlen(buffer)+1, 0);
-        	*/break;
-        default:
-            break;
-    }
-    
-    
-}
-
 void updateMessages (session *clientSession) {
     
     int i, j;
@@ -310,8 +255,9 @@ void updateMessages (session *clientSession) {
             if (msg->group == NULL) {
                 sprintf(buffer, "%d %s %s \"%s\"", msg->type, msg->id, msg->sender->name, msg->text);
                 printf("%s\n", buffer);
-            } else { return;
-                sprintf(buffer, "GROUPMESSAGE %s %s \"%s\"", ((Group*)msg->group)->name, msg->sender->name, msg->text);
+            } else if (msg->sender == NULL){
+                sprintf(buffer, "%d %s", msg->type,((Group*)msg->group)->name);
+            } else {
             }
             if (send(clientSession->socket_id, buffer, strlen(buffer), 0) > 0) {
             	clientSession->person->queue[i] = NULL;
