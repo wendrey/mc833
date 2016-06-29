@@ -88,8 +88,13 @@ int main(int argc, char * argv[]) {
     pthread_create(&recv_thread, &attr, SendMessage, NULL);
     pthread_create(&send_thread, &attr, RecvMessage, NULL);
 
-    while(online);
-
+    while(online != -1);
+    
+   	delwin(display);
+	delwin(input);
+	endwin();
+	close(s);
+	
 }
 
 void *SendMessage () {
@@ -154,7 +159,8 @@ void *SendMessage () {
 			snprintf(buf, MAX_LINE, "%d", who_msg);
 
 		} else if (strcmp(aux, "EXIT") == 0) {
-			snprintf(buf, MAX_LINE, "%d", exit_msg);	
+			snprintf(buf, MAX_LINE, "%d", exit_msg);
+			online = 0;
 
 		} else {
 			snprintf(buf, MAX_LINE, "%d", error_msg);
@@ -181,6 +187,8 @@ void *SendMessage () {
 		}
 		
 	}
+	
+	online = -1;
 	
 }
 
