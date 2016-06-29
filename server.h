@@ -20,4 +20,5 @@ typedef struct {
 char* SetWhoMessage();
 void readCommand(session *currentSession);
 void updateMessages (session *clientSession);
+int GetMessageType (char *string);
 
