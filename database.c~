@@ -130,6 +130,10 @@ int GetMessageType (char *string) {
 		return acptg_msg;
 	if (!strcmp(string,"GAMENO"))
 		return rfsg_msg;
+	if (!strcmp(string,"SEND"))
+		return new_msg;
+	if (!strcmp(string,"SEND"))
+		return new_msg;
 		
 }
 

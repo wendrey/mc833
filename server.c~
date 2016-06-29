@@ -152,7 +152,7 @@ void readCommand(session *currentSession) {
 
     } else if (type == join_msg) {
 
-    } else if (type == create_msg) {
+    } else if (type == create_gmsg) {
 
     } else if (type == game_msg) {
 

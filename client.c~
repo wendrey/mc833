@@ -246,7 +246,7 @@ void *RecvMessage () {
 			snprintf(aux, MAX_LINE, "%d %s %s", recv_msg, getNWord(str,2), getNWord(str,3));
 			send(s, aux, strlen(aux)+1, 0);
 		
-		} else if (type == newgrp_msg) {
+		else if (type == newgrp_msg) {
 			snprintf(buf, MAX_LINE, "[%s@%s>] %s", getNWord(str,3), getNWord(str,4), getNWord(str,0));
 			snprintf(aux, MAX_LINE, "%d %s %s %s", recvgrp_msg, getNWord(str,2), getNWord(str,3), getNWord(str,4));
 			send(s, aux, strlen(aux)+1, 0);
