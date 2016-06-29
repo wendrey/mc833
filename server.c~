@@ -153,6 +153,7 @@ void readCommand(session *currentSession) {
     } else if (type == join_group) {
 
     } else if (type == create_group) {
+
         char * groupName = getNWord(str, 2);
         Group *group = getGroupByName(groupName);
         msg = calloc(1, sizeof(message));
