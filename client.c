@@ -115,9 +115,7 @@ void *SendMessage () {
 	// envia notificacao de login para o server	
 
 	memset(str, '\0', MAX_LINE);
-	strcat(str, "LOGIN \0");
-	strcat(str, name);
-	str[MAX_LINE] = '\0';
+	snprintf(str, MAX_LINE, "%d %s", login_msg, name);
 	send(s, str, strlen(str)+1, 0);
 
 	while (1) {
@@ -126,7 +124,7 @@ void *SendMessage () {
 		// manda mensagem para o servidor
 		// imprime feedback para o usuario		
 
-        	memset(str,'\0', MAX_LINE);
+        memset(str,'\0', MAX_LINE);
 		memset(buf,'\0', MAX_LINE);
 		mvwgetstr(input, 1, 0, str);	
 		str[MAX_LINE-1] = '\0';
@@ -140,7 +138,7 @@ void *SendMessage () {
 			fdbk = 1;
 			id = hash(str);
 			snprintf(idstr, 10, "%d", id);
-			snprintf(buf, MAX_LINE, "SEND %d %s", id, str+4);
+			snprintf(buf, MAX_LINE, "%d %d %s", new_msg, id, str+5);
 		}
 
 		pthread_mutex_lock(&display_mutex);
@@ -171,31 +169,36 @@ void *RecvMessage () {
 	int i;
 	char str[MAX_LINE];
 	char buf[MAX_LINE];
-	char *aux;
+	char aux[MAX_LINE];
 	char divisory[COLS];
+	messageType type;
 	
 	for (i = 0; i < COLS; i++)
         divisory[i] = '-';
 
 	while(1) {
-        	memset(str,'\0', MAX_LINE);
+
+    	memset(str,'\0', MAX_LINE);
 		memset(buf,'\0', MAX_LINE);
+		memset(aux,'\0', MAX_LINE);
 		recv(s, str, MAX_LINE, 0);
-		aux = getNWord(str,1);
-		if (strcmp(aux,"NEW_MESSAGE") == 0) {
+		type = (messageType) atoi(getNWord(str,1));
+
+		if (type == new_msg) {
 			snprintf(buf, MAX_LINE, "[%s>] %s", getNWord(str,3), getNWord(str,0));
-			snprintf(str, MAX_LINE, "RECV %s", getNWord(str,2));
-			send(s, str, strlen(str)+1, 0);
+			//snprintf(aux, MAX_LINE, "%d %s %s", recv_msg, getNWord(str,2), getNWord(str,3));
+			//send(s, aux, strlen(aux)+1, 0);
+		
+		} else if (type == sent_msg) { return;
+			snprintf(buf, MAX_LINE, "Mensagem #%s enfileirada!\n", (getNWord(str,2)));
+		
+		} else if (type == recv_msg) { return;
+			snprintf(buf, MAX_LINE, "Mensagem #%s recebida por %s!\n", getNWord(str,2), getNWord(str,3));
+		
+		} else if (type == error_msg) {
+			strcpy(buf,str);
 		}
-		else if (strcmp(aux,"SENT_MESSAGE") == 0) {
-			snprintf(buf, MAX_LINE, "Mensagem #%d enfileirada!\n", atoi(getNWord(str,2)));
-		}
-		else if (strcmp(aux,"RECV_MESSAGE") == 0) {
-			snprintf(buf, MAX_LINE, "Mensagem #%d recebida!\n", atoi(getNWord(str,2)));
-		}
-		else if (strcmp(aux,"WHO") == 0) {
-			
-		}
+		
 		pthread_mutex_lock(&display_mutex);
 		mvwprintw(display, k++, 0, "%s", buf);
 		wrefresh(display);
@@ -203,4 +206,5 @@ void *RecvMessage () {
 	}
 
 }
+
 

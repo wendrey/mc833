@@ -17,14 +17,14 @@ char* getNWord (char *string, int n) {
     int start = 0, end = 0;
 
     if (!n) {
-	for (i = 0; i < strlen(string); i++) { 
-	    if (string[i] == '"' && !boolean) {
-		start = i+1;
-		boolean = 1;
-	    }
-	    else if (string[i] == '"' && boolean)
-		end = i-1;
-	}
+		for (i = 0; i < strlen(string); i++) { 
+			if (string[i] == '"' && !boolean) {
+				start = i+1;
+				boolean = 1;
+			}
+			else if (string[i] == '"' && boolean)
+				end = i-1;
+		}
     } 
    
     for (i = 0; n != 0; i++) {
@@ -50,9 +50,9 @@ char* getNWord (char *string, int n) {
 
     char *word = malloc((end - start + 2)*sizeof(char));
     
-    if (start == end) {
-	word[0] = '\0';
-	return word;
+    if (!n && start == end) {
+		word[0] = '\0';
+		return word;
     }
 
     for (i = 0; i <= end-start + 1; i++) {

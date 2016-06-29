@@ -38,7 +38,7 @@ typedef struct {
 
 session client_sessions[MAX_SESSIONS];
 
-command *readCommand(session *currentSession);
+void readCommand(session *currentSession);
 void executeCommand (command *currentCommand, session *currentSession);
 void updateMessages (session *clientSession);
 
@@ -119,9 +119,7 @@ int main(int argc, const char * argv[]) {
         for (i = 0; i < MAX_SESSIONS; i++) {
             if (client_sessions[i].socket_id > 0 && FD_ISSET(client_sessions[i].socket_id, &socketsToRead)) {
                 session *currentSession = client_sessions+i;
-                
-                command *receivedCommand = readCommand(currentSession);
-                executeCommand(receivedCommand, currentSession);
+                readCommand(currentSession);
             }
         }
         
@@ -138,33 +136,53 @@ int main(int argc, const char * argv[]) {
     return 0;
 }
 
-command *readCommand(session *currentSession) {
+void readCommand(session *currentSession) {
     
-    char buffer[MAX_LINE];
-    memset(buffer, '\0', MAX_LINE);
-    recv(currentSession->socket_id, &buffer, sizeof(buffer), 0);
-    char *commandWord = getNWord(buffer, 1);
+    char str[MAX_LINE];
+    char buf[MAX_LINE];
+    message *msg;
+    memset(str, '\0', MAX_LINE);
+    recv(currentSession->socket_id, &str, sizeof(str), 0);
+    messageType type = (messageType) atoi(getNWord(str,1));
     
-    if (commandWord == NULL) {
-        return NULL;
-    }
+    printf("recebido no server...%s...\n", str);
+    
+    if (type == login_msg) {
+        currentSession->person = getPersonByName(getNWord(str,2));
+        currentSession->person->online = 1;
+        printf("User %s joined the chat.\n", currentSession->person->name);
+        
+    } else if (type == new_msg) {
+        msg = calloc(1, sizeof(message));
+        msg->text = getNWord(str, 0);
+        msg->id = getNWord(str,2);
+        msg->receiver = getPersonByName(getNWord(str,3));
+        msg->sender = currentSession->person;
+        msg->type = new_msg;
+        msg->group = NULL;
+		sendMessage(msg);
+		return;        
+        msg = calloc(1, sizeof(message));
+        msg->text = "\0";
+        msg->id = getNWord(str,2);
+        msg->receiver = currentSession->person;
+        msg->sender = currentSession->person;
+        msg->type = sent_msg;
+        msg->group = NULL;
+		sendMessage(msg);
 
-	printf("recebido: |%s|\n", buffer);
-
-    upperCaseString(commandWord);    
-    command *currentCommand = calloc(1, sizeof(command));
-    
-    if (strcmp(commandWord, "LOGIN") == 0) {
-        char *name = getNWord(buffer, 2);
-        currentCommand->type = loginUser;
-        currentCommand->data = name;
-    } else if (strcmp(commandWord, "SEND") == 0) {
-        currentCommand->type = sendUserMessage;
-        currentCommand->receiver = getNWord(buffer, 3);
-        currentCommand->data = getNWord(buffer, 0);
-        if (strcmp(currentCommand->data, "\0") == 0)
-	    currentCommand->type = invalid;
-    } else if (strcmp(commandWord, "CREATEG") == 0) {
+    } else if (type == recv_msg) {
+    	return;
+		msg = calloc(1, sizeof(message));
+		msg->text = "\0";
+		msg->id = getNWord(str,2);
+		msg->receiver = getPersonByName(getNWord(str,3));
+		msg->sender = currentSession->person;
+		msg->type = recv_msg;
+        msg->group = NULL;
+		sendMessage(msg);
+	
+    /*} else if (strcmp(commandWord, "CREATEG") == 0) {
         currentCommand->type = createGroup;
     } else if (strcmp(commandWord, "JOING") == 0) {
         currentCommand->type = joinGroup;
@@ -176,15 +194,21 @@ command *readCommand(session *currentSession) {
         currentCommand->type = logoff;
     } else if (strcmp(commandWord, "GAME") == 0) {
         currentCommand->type = game;
-    } else if (strcmp(commandWord, "SENDG") == 0) {
+    } else if (strcmp(commandWord, "SENDF") == 0) {
         currentCommand->type = sendFile;
-    } else {
-        currentCommand->type = invalid;
+    */} else {
+    	printf("error... bad message\n");
+		msg = calloc(1, sizeof(message));
+		msg->text = "That's an invalid command, sorry!\n";
+		msg->id = "\0";
+		msg->receiver = currentSession->person;
+		msg->sender = currentSession->person;
+		msg->type = error_msg;
+        msg->group = NULL;
+		sendMessage(msg);
+
     }
     
-    free(commandWord);
-    return currentCommand;
-
 }
 
 void executeCommand (command *currentCommand, session *currentSession) {
@@ -193,22 +217,21 @@ void executeCommand (command *currentCommand, session *currentSession) {
     int numberOfUsers;
     person **allUsers;
     char buffer[MAX_LINE];
-    message *msg;
     memset (buffer, '\0', MAX_LINE);
     
     switch (currentCommand->type) {
         case loginUser:
-            currentSession->person = getPersonByName((char*)(currentCommand->data));
+            /*currentSession->person = getPersonByName((char*)(currentCommand->data));
             currentSession->person->online = 1;
             printf("User %s joined the chat.\n", currentSession->person->name);
-            break;
+            */break;
         case sendUserMessage:
-            msg = calloc(1, sizeof(message));
+            /*msg = calloc(1, sizeof(message));
             msg->sender = currentSession->person;
             msg->receiver = getPersonByName(currentCommand->receiver);
             msg->text = (char*)currentCommand->data;
-	    sprintf(buffer, "%u", sendMessage(msg));
-            break;
+		    sprintf(buffer, "%u", sendMessage(msg));
+            */break;
         case createGroup:
             break;
         case joinGroup:
@@ -243,8 +266,9 @@ void executeCommand (command *currentCommand, session *currentSession) {
         case sendFile:
             break;
         case invalid:
-           sprintf (buffer, "That's an invalid command, sorry!\n");
-    	   send(currentSession->socket_id, buffer, strlen(buffer)+1, 0);
+            /*sprintf (buffer, "That's an invalid command, sorry!\n");
+    		send(currentSession->socket_id, buffer, strlen(buffer)+1, 0);
+        	*/break;
         default:
             break;
     }
@@ -265,9 +289,10 @@ void updateMessages (session *clientSession) {
     
     for (i = 0; i < MAX_MESSAGE_QUEUE; i++) {
         message *msg = (message*)clientSession->person->queue[i];
-        if (msg != NULL) {
+        memset(buffer, '\0', MAX_LINE);
+	if (msg != NULL) {
             if (msg->group == NULL) {
-                sprintf(buffer, "NEW_MESSAGE %s \"%s\"", msg->sender->name, msg->text);
+                sprintf(buffer, "%d %s %s \"%s\"", msg->type, msg->id, msg->sender->name, msg->text);
             } else {
                 sprintf(buffer, "GROUPMESSAGE %s %s \"%s\"", ((Group*)msg->group)->name, msg->sender->name, msg->text);
             }

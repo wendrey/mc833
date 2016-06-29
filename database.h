@@ -21,10 +21,14 @@ typedef struct {
     struct message *queue[MAX_MESSAGE_QUEUE];
 } person;
 
+typedef enum { new_msg = 0, sent_msg, recv_msg, error_msg, login_msg
+} messageType;
+
 typedef struct {
-    char *text;
-    int id;
+    messageType type;
+    char *id;
     person *sender;
+    char *text;
     person *receiver;
     struct Group *group;
 } message;
