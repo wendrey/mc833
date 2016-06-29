@@ -12,8 +12,7 @@
 #include <ncurses.h>
 #include <string.h>
 #include "utils.h"
-#include "database.h"
-
+	
 #define MAX_LINE 256
 
 void *SendMessage();

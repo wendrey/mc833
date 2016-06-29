@@ -1,16 +1,6 @@
 
 #include "utils.h"
 
-unsigned int hash (char *string) {
-    int hash = 5381;
-    int c;
-    
-    while ((c = *string++))
-        hash = ((hash << 5) + hash) + c;
-    
-    return (unsigned int) hash % USER_HASH_TABLE_SIZE;
-}
-
 char* getNWord (char *string, int n) {
     int countWords = 0;
     int boolean = 0;

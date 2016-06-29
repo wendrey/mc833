@@ -150,7 +150,7 @@ void readCommand(session *currentSession) {
 
 //	} else if (type == recvgrp_msg) {
 
-    } else if (type == join_group) {
+    } else if (type == join_msg) {
 
     } else if (type == create_group) {
 
