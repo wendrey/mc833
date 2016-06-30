@@ -60,7 +60,7 @@ int main(int argc, const char * argv[]) {
         if (FD_ISSET(listening_socket, &socketsToRead)) {
             int client_socket = accept(listening_socket, (struct sockaddr *)&socket_addr, (socklen_t *)&len);
             if (client_socket < 0) {
-                printf("Socket não pode ser aberto para cliente");
+                printf("Socket não pode ser aberto para cliente\n");
             } else {
                 for (i = 0; i < MAX_SESSIONS && (client_sessions[i].socket_id != -1); i++);
                 if (i == MAX_SESSIONS) {
@@ -105,7 +105,7 @@ void readCommand(session *currentSession) {
     message *msg;
     memset(str, '\0', MAX_LINE);
     memset(buf, '\0', MAX_LINE);
-    recv(currentSession->socket_id, &str, sizeof(str), 0);
+    recv(currentSession->socket_id, str, sizeof(str), 0);
     messageType type = (messageType) atoi(getNWord(str,1));
     
     printf("recebido no server...%s...\n", str);
@@ -113,8 +113,6 @@ void readCommand(session *currentSession) {
     if (type == login_msg) {
         currentSession->person = getPersonByName(getNWord(str,2));
         currentSession->person->online = 1;
-        currentSession->person->begin = 0;
-        currentSession->person->end = 0;
         printf("User %s joined the chat.\n", currentSession->person->name);
         
     } else if (type == new_msg) {
@@ -138,7 +136,6 @@ void readCommand(session *currentSession) {
 		
     } else if (type == recv_msg) {
 		msg = calloc(1, sizeof(message));
-		msg->text = "\0";
 		msg->id = getNWord(str,2);
 		msg->receiver = getPersonByName(getNWord(str,3));
 		msg->sender = currentSession->person;
@@ -146,19 +143,50 @@ void readCommand(session *currentSession) {
         msg->group = NULL;
 		sendMessage(msg);
 	
-    } else if (type == newgrp_msg) {
+    } else if (type == recvgrp_msg) {
+        msg = calloc(1, sizeof(message));
+        msg->id = getNWord(str,2);
+        msg->receiver = getPersonByName(getNWord(str,3));
+        msg->sender = currentSession->person;
+        msg->type = recvgrp_msg;
+        msg->group = (struct Group*)getGroupByName(getNWord(str, 4));
+        decreaseCounter(msg);
         
-//	} else if (type == recvgrp_msg) {
-
+    } else if (type == newgrp_msg) {
+        Group *group = getGroupByName(getNWord(str, 3));
+        
+        msg = calloc(1, sizeof(message));
+        msg->type = newgrp_msg;
+        msg->sender = currentSession->person;
+        msg->group = (struct Group*)group;
+        msg->id = getNWord(str, 2);
+        msg->text = getNWord(str, 0);
+        
+        if (sendMessage(msg)) {
+            msg = calloc(1, sizeof(message));
+            msg->type = sent_msg;
+            msg->receiver = currentSession->person;
+            msg->id = getNWord(str, 2);
+            sendMessage(msg);
+        }
     } else if (type == join_group) {
-
+        Group *group = getGroupByName(getNWord(str, 2));
+        addUserToGroup(group, currentSession->person);
+        
+        msg = calloc(1, sizeof(message));
+        msg->type = join_group;
+        msg->sender = currentSession->person;
+        msg->group = (struct Group*)group;
+        
+        sendMessage(msg);
+        
     } else if (type == create_group) {
         char * groupName = getNWord(str, 2);
         Group *group = getGroupByName(groupName);
         msg = calloc(1, sizeof(message));
         msg->type = create_group;
         msg->text = groupName;
-        msg->group = group;
+        msg->group = (struct Group*)group;
         msg->receiver = currentSession->person;
         addUserToGroup(group, currentSession->person);
         sendMessage(msg);
@@ -170,18 +198,13 @@ void readCommand(session *currentSession) {
     } else if (type == who_msg) {
 		msg = calloc(1, sizeof(message));
 		msg->text = SetWhoMessage();
-		msg->id = "\0";
 		msg->receiver = currentSession->person;
-		msg->sender = currentSession->person;
 		msg->type = who_msg;
-        msg->group = NULL;
 		sendMessage(msg);
 
     } else if (type == exit_msg) {
-        close(currentSession->socket_id);
         currentSession->socket_id = -1;
         currentSession->person->online = 0;
-        printf("User %s left the chat.\n", currentSession->person->name);
 
     } else if (type == error_msg) {
     	printf("error... bad message\n");
@@ -251,18 +274,40 @@ void updateMessages (session *clientSession) {
         message *msg = (message*)clientSession->person->queue[clientSession->person->begin];
         memset(buffer, '\0', MAX_LINE);
 		if (msg != NULL) {
-            if (msg->group == NULL) {
+            
+            messageType type = msg->type;
+            if (type == new_msg) {
                 sprintf(buffer, "%d %s %s \"%s\"", msg->type, msg->id, msg->sender->name, msg->text);
-                printf("%s\n", buffer);
-            } else if (msg->sender == NULL){
+            } else if (type == recv_msg) {
+                sprintf(buffer, "%d %s", msg->type, msg->id);
+            } else if (type == recvgrp_msg) {
+                sprintf(buffer, "%d %s", msg->type, msg->id);
+            } else if (type == newgrp_msg) {
+                sprintf(buffer, "%d %s %s %s \"%s\"", msg->type, msg->id, msg->sender->name, ((Group*)msg->group)->name ,msg->text);
+            } else if (type == sent_msg) {
+                sprintf(buffer, "%d %s", msg->type, msg->id);
+            } else if (type == join_group) {
+                sprintf(buffer, "%d %s %s", msg->type,((Group*)msg->group)->name, msg->sender->name);
+            } else if (type == create_group) {
                 sprintf(buffer, "%d %s", msg->type,((Group*)msg->group)->name);
-            } else {
+            } else if (type == game_msg) {
+                
+            } else if (type == play_msg) {
+                
+            } else if (type == who_msg) {
+                sprintf(buffer, "%d \"%s\"", msg->type, msg->text);
+                printf("User %s used command WHO, result %s\n", clientSession->person->name, buffer);
+            } else if (type == error_msg) {
+                
             }
+            
             if (send(clientSession->socket_id, buffer, strlen(buffer), 0) > 0) {
-            	clientSession->person->queue[i] = NULL;
-            	clientSession->person->begin = (clientSession->person->begin + 1) % MAX_MESSAGE_QUEUE; 
+                clientSession->person->queue[i] = NULL;
+                clientSession->person->begin = (clientSession->person->begin + 1) % MAX_MESSAGE_QUEUE;
             }
+            
         }
+        
     }
     
 }

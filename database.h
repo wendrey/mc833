@@ -9,6 +9,7 @@
 #define MAX_MESSAGE_SIZE 256
 #define MAX_MESSAGE_QUEUE 20
 #define MAX_PERSON_PER_GROUP 10
+#define MAX_COUNTER 50
 
 struct message;
 struct Group;
@@ -39,12 +40,19 @@ typedef struct {
 
 typedef struct {
     char name[30];
+    int numberOfMembers;
     person *members[MAX_PERSON_PER_GROUP];
 } Group;
 
-unsigned int sendMessageToGroup (message *msg);
-unsigned int sendMessageToPerson (message *msg);
+int sendMessageToGroup (message *msg);
+int sendMessageToPerson (message *msg);
 person *getPersonByName (char *name);
 person **getAllUsers (int *size);
-unsigned int sendMessage (message *msg);
+int sendMessage (message *msg);
 void setupDatabase ();
+
+/******************************** Group ***************************/
+
+Group *getGroupByName (char *name);
+int addUserToGroup (Group *g, person *p);
+void decreaseCounter(message *m);
