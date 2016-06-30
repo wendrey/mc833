@@ -83,7 +83,7 @@ int main(int argc, char * argv[]) {
 
 void *SendMessage () {
 
-	int i, id, ok, fdbk = 0;
+	int i, error, id, ok, fdbk = 0;
 	char buf[MAX_LINE];
 	char str[MAX_LINE];
 	char *aux;
@@ -118,11 +118,11 @@ void *SendMessage () {
 		memset(buf,'\0', MAX_LINE);
 		mvwgetstr(input, 1, 0, str);	
 		str[MAX_LINE-1] = '\0';
+		error = 0;
 		
 		messageType type = GetMessageType(getNWord(str, 1));
 
 		if (type == new_msg) {
-			fdbk = 1;
 			id = hash(str);
 			snprintf(idstr, 10, "%d", id);
 			snprintf(buf, MAX_LINE, "%d %d %s", new_msg, id, str+5);
@@ -134,7 +134,6 @@ void *SendMessage () {
 			snprintf(buf, MAX_LINE, "%d %s", join_group, str+6);
 		
 		} else if (type == newgrp_msg) {
-			fdbk = 1;
 			id = hash(str);
 			snprintf(idstr, 10, "%d", id);
 			snprintf(buf, MAX_LINE, "%d %d %s", newgrp_msg, id, str+6);
@@ -170,7 +169,7 @@ void *SendMessage () {
 			//UpdateGame(str+6);
 			
 		} else {
-			snprintf(buf, MAX_LINE, "%d", error_msg);
+			error = 1;
 			snprintf(str, MAX_LINE, "That's an invalid command, sorry!");					
 		}
 		
@@ -183,7 +182,8 @@ void *SendMessage () {
 		mvwprintw(input, 0, 0, "$[%s]", name);
 		wrefresh(input);
 
-		ok = send(s, buf, strlen(buf)+1, 0);
+		if (!error)
+			ok = send(s, buf, strlen(buf)+1, 0);
 		
 		if (ok && (type == new_msg || type == newgrp_msg)) {
 			pthread_mutex_lock(&display_mutex);
@@ -255,13 +255,13 @@ void *RecvMessage () {
 			snprintf(buf, MAX_LINE, "Mensagem #%s enfileirada!\n", getNWord(str,2));
 		
 		} else if (type == recv_msg) {
-			snprintf(buf, MAX_LINE, "Mensagem #%s recebida por %s!\n", getNWord(str,2), getNWord(str,3));		
+			snprintf(buf, MAX_LINE, "Mensagem #%s recebida!\n", getNWord(str,2));
 	
 		} else if (type == create_group) {
-			snprintf(buf, MAX_LINE, "Grupo %s criado com sucesso!\n", getNWord(str,2));
+			snprintf(buf, MAX_LINE, "Grupo [@%s] criado com sucesso!\n", getNWord(str,2));
 
 		} else if (type == join_group) {
-			snprintf(buf, MAX_LINE, "Adicionado ao grupo %s com sucesso!\n", getNWord(str,2));
+			snprintf(buf, MAX_LINE, "Usuário [%s] adicionado ao grupo [@%s] com sucesso!\n", getNWord(str,3), getNWord(str,2));
 
 /*		} else if (type == game_msg) {
 			snprintf(buf, MAX_LINE, "Usuário [%s] está desafiando você para uma partida de Jogo da Velha!\n", getNWord(str,2));
@@ -319,7 +319,7 @@ int GetWhoMessage (char str[], char buf[]) {
 	snprintf (buf, MAX_LINE, "| %-*s | status  |\n", size, "usuario");
 	on = 1;
 
-	for (i = 0; i < users; i++) {
+	for (i = 0; i <= users; i++) {
 		who = getNWord(users_names,i+2);
 		if (!strcmp(who,"|"))
 			on = 0;
