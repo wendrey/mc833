@@ -20,4 +20,6 @@
 void *SendMessage();
 void *RecvMessage();
 int GetWhoMessage (char str[], char buf[]);
+void ScrollBeforeDisplay (int n);
+void ScrollAfterDisplay (int n);
 

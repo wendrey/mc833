@@ -82,7 +82,7 @@ int GetMessageType (char *string) {
 	if (!strcmp(string,"SEND"))
 		return new_msg;
 	if (!strcmp(string,"SENDG"))
-		return new_msg;
+		return newgrp_msg;
 	if (!strcmp(string,"CREATEG"))
 		return create_group;
 	if (!strcmp(string,"JOING"))
@@ -92,13 +92,13 @@ int GetMessageType (char *string) {
 	if (!strcmp(string,"EXIT"))
 		return exit_msg;
 	if (!strcmp(string,"GAME"))
-		return game_msg;
+		return invite_player;
 	if (!strcmp(string,"GAMEA"))
-		return play_msg;
+		return game_move;
 	if (!strcmp(string,"GAMEYES"))
-		return acptg_msg;
+		return accept_invite;
 	if (!strcmp(string,"GAMENO"))
-		return rfsg_msg;
+		return refuse_invite;
 	
 	return -1;
 		

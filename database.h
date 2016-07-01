@@ -25,8 +25,8 @@ typedef struct {
 typedef enum { new_msg = 0, sent_msg, recv_msg,
 			   newgrp_msg, create_group, join_group, recvgrp_msg,
 			   error_msg, login_msg, exit_msg, who_msg,
-			   game_msg, play_msg, acptg_msg, rfsg_msg, sentg_msg, recvp_msg,
-			   file_msg, cont_msg, acptf_msg, rfsf_msg, recvg_msg, sentp_msg 
+			   invite_player, game_move, accept_invite, refuse_invite, invite_sent, invite_received, move_sent, move_received, won_game, lost_game, draw_game,
+    		   file_msg, cont_msg, acptf_msg, rfsf_msg, recvg_msg, sentp_msg 
 } messageType;
 
 typedef struct {
