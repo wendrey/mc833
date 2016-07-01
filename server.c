@@ -168,17 +168,30 @@ void readCommand(session *currentSession) {
             msg->receiver = currentSession->person;
             msg->id = getNWord(str, 2);
             sendMessage(msg);
+        } else {
+            msg = calloc(1, sizeof(message));
+            msg->type = error_msg;
+            msg->text = "Não foi possível enviar mensagem!";
+            msg->receiver = currentSession->person;
+            sendMessage(msg);
+            return;
         }
     } else if (type == join_group) {
         Group *group = getGroupByName(getNWord(str, 2));
-        addUserToGroup(group, currentSession->person);
-        
-        msg = calloc(1, sizeof(message));
-        msg->type = join_group;
-        msg->sender = currentSession->person;
-        msg->group = (struct Group*)group;
-        
-        sendMessage(msg);
+        if (addUserToGroup(group, currentSession->person)) {
+            msg = calloc(1, sizeof(message));
+            msg->type = join_group;
+            msg->sender = currentSession->person;
+            msg->group = (struct Group*)group;
+            
+            sendMessage(msg);
+        } else {
+            msg = calloc(1, sizeof(message));
+            msg->type = error_msg;
+            msg->text = "Você já está no grupo!";
+            msg->receiver = currentSession->person;
+            sendMessage(msg);
+        }
         
     } else if (type == create_group) {
         char * groupName = getNWord(str, 2);
@@ -188,13 +201,129 @@ void readCommand(session *currentSession) {
         msg->text = groupName;
         msg->group = (struct Group*)group;
         msg->receiver = currentSession->person;
+        msg->sender = currentSession->person;
         addUserToGroup(group, currentSession->person);
         sendMessage(msg);
         
-    } else if (type == game_msg) {
+    } else if (type == invite_player) {
+        msg = calloc(1, sizeof(message));
+        msg->type = invite_player;
+        msg->receiver = getPersonByName(getNWord(str,3));
+        msg->sender = currentSession->person;
+        msg->id = getNWord(str, 2);
+        sendMessage(msg);
+        
+        msg = calloc(1, sizeof(message));
+        msg->type = invite_sent;
+        msg->receiver = currentSession->person;
+        msg->id = getNWord(str,2);
+        sendMessage(msg);
+    } else if (type == accept_invite) {
+        
+        createGame(getPersonByName(getNWord(str,2)), currentSession->person);
+        
+        msg = calloc(1, sizeof(message));
+        msg->type = accept_invite;
+        msg->receiver = getPersonByName(getNWord(str,2));
+        msg->sender = currentSession->person;
+        sendMessage(msg);
+    } else if (type == refuse_invite) {
+        msg = calloc(1, sizeof(message));
+        msg->type = refuse_invite;
+        msg->receiver = getPersonByName(getNWord(str,2));
+        msg->sender = currentSession->person;
+        sendMessage(msg);
+    } else if (type == game_move) {
+        
+        int mv[2];
+        mv[0] = ((char*)getNWord(str, 4))[0]-'A';
+        mv[1] = atoi(getNWord(str, 5)) - 1;
+        
+        person *playerA = currentSession->person;
+        person *playerB = getPersonByName(getNWord(str, 3));
+        
+        game *g = getGame(playerA, playerB);
+        if (g == NULL) {
+            msg = calloc(1, sizeof(message));
+            msg->type = error_msg;
+            msg->text = "Jogo inexistente!";
+            msg->receiver = currentSession->person;
+            sendMessage(msg);
+            return;
+        }
+        if (makeMove(g, mv, currentSession->person) == 0) {
+            msg = calloc(1, sizeof(message));
+            msg->type = error_msg;
+            msg->text = "Jogada inválida!";
+            msg->receiver = currentSession->person;
+            sendMessage(msg);
+            return;
+        }
+        
+        msg = calloc(1, sizeof(message));
+        msg->type = move_sent;
+        msg->id = getNWord(str,2);
+        msg->receiver = currentSession->person;
+        sendMessage(msg);
 
-    } else if (type == play_msg) {
+        msg = calloc(1, sizeof(message));
+        msg->type = game_move;
+        msg->id = getNWord(str,2);
+        msg->sender = currentSession->person;
+        msg->receiver = getPersonByName(getNWord(str,3));
+        sendMessage(msg);
+        
+        if (getWinner(g) == X) {
+            msg = calloc(1, sizeof(message));
+            msg->type = won_game;
+            msg->sender = g->playerB;
+            msg->receiver = g->playerA;
+            sendMessage(msg);
+            
+            msg = calloc(1, sizeof(message));
+            msg->type = lost_game;
+            msg->sender = g->playerA;
+            msg->receiver = g->playerB;
+            sendMessage(msg);
+        } else if (getWinner(g) == O){
+            msg = calloc(1, sizeof(message));
+            msg->type = won_game;
+            msg->sender = g->playerA;
+            msg->receiver = g->playerB;
+            sendMessage(msg);
+                
+            msg = calloc(1, sizeof(message));
+            msg->type = lost_game;
+            msg->sender = g->playerB;
+            msg->receiver = g->playerA;
+            sendMessage(msg);
 
+        } else if (getWinner(g) == D)   {
+            msg = calloc(1, sizeof(message));
+            msg->type = draw_game;
+            msg->sender = g->playerB;
+            msg->receiver = g->playerA;
+            sendMessage(msg);
+
+            msg = calloc(1, sizeof(message));
+            msg->type = draw_game;
+            msg->sender = g->playerA;
+            msg->receiver = g->playerB;
+            sendMessage(msg);
+
+        }
+    } else if (type == move_received) {
+        msg = calloc(1, sizeof(message));
+        msg->type = move_received;
+        msg->id = getNWord(str, 2);
+        msg->receiver = getPersonByName(getNWord(str,3));
+        sendMessage(msg);
+    } else if (type == invite_received) {
+        msg = calloc(1, sizeof(message));
+        msg->type = invite_received;
+        msg->receiver = getPersonByName(getNWord(str,3));
+        msg->id = getNWord(str, 2);
+        sendMessage(msg);
     } else if (type == who_msg) {
 		msg = calloc(1, sizeof(message));
 		msg->text = SetWhoMessage();
@@ -290,18 +419,52 @@ void updateMessages (session *clientSession) {
                 sprintf(buffer, "%d %s %s", msg->type,((Group*)msg->group)->name, msg->sender->name);
             } else if (type == create_group) {
                 sprintf(buffer, "%d %s", msg->type,((Group*)msg->group)->name);
-            } else if (type == game_msg) {
+            } else if (type == invite_player) {
+                sprintf(buffer, "%d %s %s", msg->type, msg->id ,msg->sender->name);
+            } else if (type == accept_invite) {
+                sprintf(buffer, "%d %s", msg->type, msg->sender->name);
+            } else if (type == refuse_invite) {
+                sprintf(buffer, "%d %s", msg->type, msg->sender->name);
+            } else if (type == move_sent) {
+                sprintf(buffer, "%d %s", msg->type, msg->id);
+            } else if (type == game_move) {
+                game *g = getGame(msg->sender, msg->receiver);
+                char state[10];
+                for (int i = 0; i < 9; i++) {
+                    switch (g->board[i%3][i/3]) {
+                        case X:
+                            state[i] = 'X';
+                            break;
+                        case O:
+                            state[i] = 'O';
+                            break;
+                        default:
+                            state[i] = ' ';
+                            break;
+                    }
+                }
+                state[9] = '\0';
+                sprintf(buffer, "%d %s %s \"%s\"", msg->type, msg->id, msg->sender->name, state);
                 
-            } else if (type == play_msg) {
-                
+            } else if (type == move_received) {
+                sprintf(buffer, "%d %s", msg->type, msg->id);
+            } else if (type == invite_sent) {
+                sprintf(buffer, "%d %s", msg->type, msg->id);
+            } else if (type == invite_received) {
+                sprintf(buffer, "%d %s", msg->type, msg->id);
             } else if (type == who_msg) {
                 sprintf(buffer, "%d \"%s\"", msg->type, msg->text);
-                printf("User %s used command WHO, result %s\n", clientSession->person->name, buffer);
             } else if (type == error_msg) {
-                
+                sprintf(buffer, "%d \"%s\"", msg->type, msg->text);
+            } else if (type == won_game) {
+                sprintf(buffer, "%d %s", msg->type, msg->sender->name);
+            } else if (type == lost_game) {
+                sprintf(buffer, "%d %s", msg->type, msg->sender->name);
+            } else if (type == draw_game) {
+                sprintf(buffer, "%d %s", msg->type, msg->sender->name);
             }
             
-            if (send(clientSession->socket_id, buffer, strlen(buffer), 0) > 0) {
+            if (send(clientSession->socket_id, buffer, strlen(buffer)+1, 0) > 0) {
                 clientSession->person->queue[i] = NULL;
                 clientSession->person->begin = (clientSession->person->begin + 1) % MAX_MESSAGE_QUEUE;
             }

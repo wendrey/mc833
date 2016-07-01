@@ -6,6 +6,8 @@ typedef struct {
     message *msg;
 } statusCounter;
 
+game *games[MAX_GAMES];
+
 int signed_users = 0;
 person *users[MAX_USER];
 Group *groups[MAX_GROUPS];
@@ -23,6 +25,10 @@ void setupDatabase () {
     
     for (i = 0; i < MAX_COUNTER; i++) {
         counters[i].msg = NULL;
+    }
+    
+    for (i = 0; i < MAX_GAMES; i++) {
+        games[i]= NULL;
     }
 }
 
@@ -120,8 +126,19 @@ int sendMessage (message *msg) {
     }
 }
 
+int isUserInGroup (person *user, Group *group) {
+    for (int i = 0; i < MAX_PERSON_PER_GROUP; i++) {
+        if (group->members[i] == user)
+            return 1;
+    }
+    return 0;
+}
+
 int sendMessageToGroup (message *msg) {
     Group *group = (Group*)msg->group;
+    if (!isUserInGroup(msg->sender, group)) {
+        return 0;
+    }
     int i, n;
     n = group->numberOfMembers - 1;
     for (i = 0; i < MAX_PERSON_PER_GROUP; i++) {
@@ -154,6 +171,9 @@ int sendMessageToPerson (message *msg) {
 }
 
 int addUserToGroup (Group *g, person *p) {
+    if (isUserInGroup(p, g)) {
+        return 0;
+    }
     for (int i = 0; i < MAX_PERSON_PER_GROUP; i++) {
         if (g->members[i] == NULL) {
             g->members[i] = p;
@@ -193,4 +213,126 @@ void decreaseCounter(message *m) {
     }
 }
 
+int samePlayers (person *A, person *B, game *g) {
+    if (g && g->playerA == A && g->playerB == B)
+        return 1;
+    if (g && g->playerA == B && g->playerB == A)
+        return 1;
+    return 0;
+}
+
+game *getGame (person *A, person *B) {
+    int i;
+    for (i = 0; i < MAX_GAMES; i++) {
+        if (samePlayers(A, B, games[i]))
+            return games[i];
+    }
+    
+    return NULL;
+}
+
+int createGame (person *A, person *B) {
+    for (int i = 0; i < MAX_GAMES; i++) {
+        if (games[i] == NULL) {
+            games[i] = calloc(1, sizeof(game));
+            games[i]->playerA = A;
+            games[i]->playerB = B;
+            games[i]->turn = X;
+            return 1;
+        }
+    }
+    
+    return 0;
+}
+
+boardState getWinner (game *g) {
+    
+    if (g->board[0][0] == X && g->board[0][1] == X && g->board[0][2] == X) {
+        return X;
+    }
+    if (g->board[1][0] == X && g->board[1][1] == X && g->board[1][2] == X) {
+        return X;
+    }
+    if (g->board[2][0] == X && g->board[2][1] == X && g->board[2][2] == X) {
+        return X;
+    }
+    if (g->board[0][0] == X && g->board[1][0] == X && g->board[2][0] == X) {
+        return X;
+    }
+    if (g->board[0][1] == X && g->board[1][1] == X && g->board[2][1] == X) {
+        return X;
+    }
+    if (g->board[0][2] == X && g->board[1][2] == X && g->board[2][2] == X) {
+        return X;
+    }
+    if (g->board[0][0] == X && g->board[1][1] == X && g->board[2][2] == X) {
+        return X;
+    }
+    if (g->board[0][2] == X && g->board[1][1] == X && g->board[2][0] == X) {
+        return X;
+    }
+    
+    
+    if (g->board[0][0] == O && g->board[0][1] == O && g->board[0][2] == O) {
+        return O;
+    }
+    if (g->board[1][0] == O && g->board[1][1] == O && g->board[1][2] == O) {
+        return O;
+    }
+    if (g->board[2][0] == O && g->board[2][1] == O && g->board[2][2] == O) {
+        return O;
+    }
+    if (g->board[0][0] == O && g->board[1][0] == O && g->board[2][0] == O) {
+        return O;
+    }
+    if (g->board[0][1] == O && g->board[1][1] == O && g->board[2][1] == O) {
+        return O;
+    }
+    if (g->board[0][2] == O && g->board[1][2] == O && g->board[2][2] == O) {
+        return O;
+    }
+    if (g->board[0][0] == O && g->board[1][1] == O && g->board[2][2] == O) {
+        return O;
+    }
+    if (g->board[0][2] == O && g->board[1][1] == O && g->board[2][0] == O) {
+        return O;
+    }
+    
+    int counter = 0;
+    for (int i = 0; i <= 2; i++) {
+        for (int j = 0; j <= 2; j++)
+            if (g->board[i][j] != B) {
+                counter++;
+            }
+    }
+    if (counter == 9) {
+        return D;
+    }
+    return B;
+    
+};
+
+int makeMove (game *g, int mv[2], person *player) {
+    
+    if (g->board[mv[0]][mv[1]] != B || mv[0] > 2 || mv[1] > 2 || mv[0] < 0 || mv[1] < 0) {
+        return 0;
+    }
+    
+    if ((g->turn == X && player == g->playerB) || (g->turn == O && player == g->playerA)) {
+        return 0;
+    }
+    
+    g->board[mv[0]][mv[1]] = g->turn;
+    g->turn = g->turn == X ? O :  X;
+    
+    return 1;
+    
+}
+void removeGame (person *playerA, person *playerB) {
+    for (int i = 0; i < MAX_GAMES; i++) {
+        if (games[i] && games[i]->playerA == playerA && games[i]->playerB == playerB) {
+            games[i] = NULL;
+        }
+    }
+}
 
