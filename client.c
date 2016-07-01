@@ -61,8 +61,8 @@ int main(int argc, char * argv[]) {
     display = newwin(LINES-2, COLS, 0, 0);
     input = newwin(3, COLS, LINES-2, 0);
     
-    scrollok(input, TRUE);
     scrollok(display, TRUE);
+    idlok(display, TRUE);
     
     pthread_t recv_thread;
     pthread_t send_thread;
@@ -102,41 +102,34 @@ void *SendMessage () {
 	wrefresh(input);
 	pthread_mutex_unlock(&display_mutex);
 
-	// envia notificacao de login para o server	
-
 	memset(str, '\0', MAX_LINE);
 	snprintf(str, MAX_LINE, "%d %s", login_msg, name);
 	send(s, str, strlen(str)+1, 0);
 
 	while (online) {
 
-		// recebe e trata entrada do usuario
-		// manda mensagem para o servidor
-		// imprime feedback para o usuario		
-
+		error = 0;
         memset(str,'\0', MAX_LINE);
 		memset(buf,'\0', MAX_LINE);
 		mvwgetstr(input, 1, 0, str);	
-		str[MAX_LINE-1] = '\0';
-		error = 0;
-		
+		str[MAX_LINE-1] = '\0';		
 		messageType type = GetMessageType(getNWord(str, 1));
 
 		if (type == new_msg) {
 			id = hash(str);
 			snprintf(idstr, 10, "%d", id);
-			snprintf(buf, MAX_LINE, "%d %d %s", new_msg, id, str+5);
+			snprintf(buf, MAX_LINE, "%d %d %s \"%s\"", new_msg, id, getNWord(str,2), getNWord(str,0));
 
 		} else if (type == create_group) {
-			snprintf(buf, MAX_LINE, "%d %s", create_group, str+8);		
+			snprintf(buf, MAX_LINE, "%d %s", create_group, getNWord(str,2));		
 		
 		} else if (type == join_group) {
-			snprintf(buf, MAX_LINE, "%d %s", join_group, str+6);
+			snprintf(buf, MAX_LINE, "%d %s", join_group, getNWord(str,2));
 		
 		} else if (type == newgrp_msg) {
 			id = hash(str);
 			snprintf(idstr, 10, "%d", id);
-			snprintf(buf, MAX_LINE, "%d %d %s", newgrp_msg, id, str+6);
+			snprintf(buf, MAX_LINE, "%d %d %s \"%s\"", newgrp_msg, id, getNWord(str,2), getNWord(str,3));
 		
 		} else if (type == who_msg) {
 			snprintf(buf, MAX_LINE, "%d", who_msg);
@@ -145,74 +138,77 @@ void *SendMessage () {
 			snprintf(buf, MAX_LINE, "%d", exit_msg);
 			online = 0;
 
-		} else if (type == game_msg) {
+		} else if (type == invite_player) {
 			id = hash(str);
 			snprintf(idstr, 10, "%d", id);
-			snprintf(buf, MAX_LINE, "%d %s", game_msg, str+5);
-			//CreateGame(str+5);	
+			snprintf(buf, MAX_LINE, "%d %d %s", invite_player, id, getNWord(str,2));
 		
-		} else if (type == acptg_msg) {
-			id = hash(str);
-			snprintf(idstr, 10, "%d", id);
-			snprintf(buf, MAX_LINE, "%d %s", game_msg, str+8);
-			//CreateGame(str+5);				
+		} else if (type == accept_invite) {
+			snprintf(buf, MAX_LINE, "%d %s", accept_invite, getNWord(str,2));
 		
-		} else if (type == rfsg_msg) {
-			id = hash(str);
-			snprintf(idstr, 10, "%d", id);
-			snprintf(buf, MAX_LINE, "%d %s", game_msg, str+7);
+		} else if (type == refuse_invite) {
+			snprintf(buf, MAX_LINE, "%d %s", refuse_invite, getNWord(str,2));
 
-		} else if (type == play_msg) {
+		} else if (type == game_move) {
 			id = hash(str);
 			snprintf(idstr, 10, "%d", id);
-			snprintf(buf, MAX_LINE, "%d %s", play_msg, str+6);
-			//UpdateGame(str+6);
+			snprintf(buf, MAX_LINE, "%d %d %s %s %s", game_move, id, getNWord(str,2), getNWord(str,3), getNWord(str,4));
 			
 		} else {
 			error = 1;
-			snprintf(str, MAX_LINE, "That's an invalid command, sorry!");					
+			snprintf(buf, MAX_LINE, "Comando inválido: %s!", str);					
+			strcpy(str,buf);
 		}
 		
 		pthread_mutex_lock(&display_mutex);
-		mvwprintw(display, k++, 0, "$[%s] %s", name, str);
+		ScrollBeforeDisplay(1);
+		mvwprintw(display, k, 0, "$[%s] %s", name, str);
+		ScrollAfterDisplay(1);
 		wrefresh(display);	
-		pthread_mutex_unlock(&display_mutex);
 		wclear(input);
 		mvwprintw(input, 0, 0, "%s", divisory);
 		mvwprintw(input, 0, 0, "$[%s]", name);
 		wrefresh(input);
+		pthread_mutex_unlock(&display_mutex);
 
 		if (!error)
 			ok = send(s, buf, strlen(buf)+1, 0);
 		
 		if (ok && (type == new_msg || type == newgrp_msg)) {
 			pthread_mutex_lock(&display_mutex);
-			mvwprintw(display, k++, 0, "Mensagem #%s enviada!\n", idstr);
+			ScrollBeforeDisplay(1);
+			mvwprintw(display, k, 0, "Mensagem #%s enviada para o servidor!\n", idstr);
+			ScrollAfterDisplay(1);
 			wrefresh(display);
 			pthread_mutex_unlock(&display_mutex);
 		}
 		
-		if (type == game_msg) {
+		if (ok && (type == invite_player)) {
 			pthread_mutex_lock(&display_mutex);
-			mvwprintw(display, k++, 0, "Pedido #%s enviado!\n", idstr);
+			ScrollBeforeDisplay(1);
+			mvwprintw(display, k, 0, "Pedido #%s enviado para o servidor!\n", idstr);
+			ScrollAfterDisplay(1);
 			wrefresh(display);
 			pthread_mutex_unlock(&display_mutex);				
 		}
 		
-		if (type == play_msg) {
+		if (ok && (type == game_move)) {
 			pthread_mutex_lock(&display_mutex);
-			mvwprintw(display, k++, 0, "Movimento #%s enviado!\n", idstr);
+			ScrollBeforeDisplay(1);
+			mvwprintw(display, k, 0, "Movimento #%s enviado para o servidor!\n", idstr);
+			ScrollAfterDisplay(1);
 			wrefresh(display);
 			pthread_mutex_unlock(&display_mutex);				
 		}
 
-		if (type == acptg_msg || type == rfsg_msg || type == acptf_msg || type == rfsf_msg) {
+		if (ok && (type == accept_invite || type == refuse_invite)) {
 			pthread_mutex_lock(&display_mutex);
-			mvwprintw(display, k++, 0, "Resposta #%s enviada!\n", idstr);
+			ScrollBeforeDisplay(1);
+			mvwprintw(display, k, 0, "Resposta de jogo enviada para o servidor!\n");
+			ScrollAfterDisplay(1);
 			wrefresh(display);
 			pthread_mutex_unlock(&display_mutex);				
 		}
-
 
 	}
 	
@@ -238,7 +234,7 @@ void *RecvMessage () {
 		memset(buf,'\0', MAX_LINE);
 		memset(aux,'\0', MAX_LINE);
 		recv(s, str, MAX_LINE, 0);
-		lines = 0;
+		lines = 1;
 		type = (messageType) atoi(getNWord(str,1));
 
 		if (type == new_msg) {
@@ -263,42 +259,85 @@ void *RecvMessage () {
 		} else if (type == join_group) {
 			snprintf(buf, MAX_LINE, "Usuário [%s] adicionado ao grupo [@%s] com sucesso!\n", getNWord(str,3), getNWord(str,2));
 
-/*		} else if (type == game_msg) {
-			snprintf(buf, MAX_LINE, "Usuário [%s] está desafiando você para uma partida de Jogo da Velha!\n", getNWord(str,2));
+		} else if (type == invite_player) {
+			snprintf(buf, MAX_LINE, "Usuário [%s] está desafiando você para uma partida de Jogo da Velha!\n", getNWord(str,3));
+			snprintf(aux, MAX_LINE, "%d %s %s", invite_received, getNWord(str,2), getNWord(str,3));
+			send(s, aux, strlen(aux)+1, 0);
 
-
-		} else if (type == acptg_msg) {
-			snprintf(buf, MAX_LINE, "Usuário [%s] aceitou jogar Jogo da Velha, sua vez de jogar!\n", getNWord(str,2));
-			//ShowGame();
-
-		} else if (type == play_msg) {
-			snprintf(buf, MAX_LINE, "Usuário [%s] realizou um movimento no Jogo da Velha, sua vez de jogar!\n", getNWord(str,2));
-			//ShowGame();
-
-		} else if (type == sentg_msg) {
+		} else if (type == invite_sent) {
 			snprintf(buf, MAX_LINE, "Pedido #%s enfileirado!\n", getNWord(str,2));
-		
-		} else if (type == recvg_msg) {
-			snprintf(buf, MAX_LINE, "Pedido #%s recebidao por %s!\n", getNWord(str,2), getNWord(str,3));		
 
-		} else if (type == sentp_msg) {
-			snprintf(buf, MAX_LINE, "Movimento #%s enfileirado!\n", getNWord(str,2));
-		
-		} else if (type == recvp_msg) {
-			snprintf(buf, MAX_LINE, "Movimento #%s recebido por %s!\n", getNWord(str,2), getNWord(str,3));		
-*/
+		} else if (type == invite_received) {
+			snprintf(buf, MAX_LINE, "Pedido #%s recebido!\n", getNWord(str,2));
+
+		} else if (type == accept_invite) {
+			snprintf(buf, MAX_LINE, "Usuário [%s] aceitou seu pedido para jogar o Jogo da Velha!\n", getNWord(str,2));
+			lines += GetGameMessage("\0",aux, getNWord(str,2));
+			strcat (buf,aux);
+
+		} else if (type == refuse_invite) {
+			snprintf(buf, MAX_LINE, "Usuário [%s] recusou seu pedido para jogar o Jogo da Velha!\n", getNWord(str,2));
+
+		} else if (type == game_move) {
+			lines = GetGameMessage(str,buf, getNWord(str,3));			
+			snprintf(aux, MAX_LINE, "%d %s %s", move_received, getNWord(str,2), getNWord(str,3));
+			send(s, aux, strlen(aux)+1, 0);
+
+		} else if (type == move_sent) {
+			snprintf(buf, MAX_LINE, "Movimento #%s enfileirado!\n", getNWord(str,2)); 
+			
+		} else if (type == move_received) {
+			snprintf(buf, MAX_LINE, "Movimento #%s recebido!\n", getNWord(str,2)); 
+			
+		} else if (type == won_game) {
+			snprintf(buf, MAX_LINE, "Parabéns, você venceu o jogo contra [%s]!\n", getNWord(str,2)); 
+
+		} else if (type == lost_game) {
+			snprintf(buf, MAX_LINE, "Oh não, você perdeu o jogo contra [%s]!\n", getNWord(str,2)); 
+
+		} else if (type == draw_game) {
+			snprintf(buf, MAX_LINE, "Mas que loucura, o jogo contra [%s] empatou!\n", getNWord(str,2)); 
+
 		} else if (type == who_msg) {
-			lines = GetWhoMessage(str, buf);			
+			lines = GetWhoMessage(str,buf);			
 									
-		} else
-			continue;
+		} else if (type == error_msg)
+			snprintf(buf, MAX_LINE, "Erro: %s", getNWord(str,0));			
 		
 		pthread_mutex_lock(&display_mutex);
-		mvwprintw(display, k++, 0, "%s", buf);
+		ScrollBeforeDisplay(lines);
+		mvwprintw(display, k, 0, "%s", buf);
+		ScrollAfterDisplay(lines);		
 		wrefresh(display);
-		k += lines;
+		wrefresh(input);
 		pthread_mutex_unlock(&display_mutex);
 	}
+
+}
+
+int GetGameMessage (char str[], char buf[], char player[]) {
+	
+	char aux[MAX_LINE];
+	char *mark = getNWord(str,0);
+	
+	if (!strcmp(str,"\0"))
+		mark = "         ";
+		
+	snprintf (buf, MAX_LINE, "Status da partida de Jogo da Velha com [%s]:\n", player);	
+	snprintf (aux, MAX_LINE, "  A | B | C \n"); 
+	strcat(buf,aux);
+	snprintf (aux, MAX_LINE, "1 %c | %c | %c \n", mark[0], mark[1], mark[2]); 
+	strcat(buf,aux);
+	snprintf (aux, MAX_LINE, " ---|---|---\n"); 
+	strcat(buf,aux);
+	snprintf (aux, MAX_LINE, "2 %c | %c | %c \n", mark[3], mark[4], mark[5]); 
+	strcat(buf,aux);
+	snprintf (aux, MAX_LINE, " ---|---|---\n"); 
+	strcat(buf,aux);
+	snprintf (aux, MAX_LINE, "3 %c | %c | %c \n", mark[6], mark[7], mark[8]); 
+	strcat(buf,aux);		
+
+	return 7;
 
 }
 
@@ -332,6 +371,22 @@ int GetWhoMessage (char str[], char buf[]) {
 		}	
 	}
 
-	return users;
+	return users+1;
+	
+}
+
+void ScrollBeforeDisplay (int n) {
+
+	if (k+n-1 > LINES-3) {
+		int up = n-((LINES-3)-k);
+		k = k-up;
+		wscrl(display, up);		
+	}
+	
+}
+
+void ScrollAfterDisplay (int n) {
+
+	k += n;
 	
 }
